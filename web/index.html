@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Purdue Course Scheduler</title>
+    <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>Purdue Course Scheduler</h1>
+        <div class="search">
+            <input id="q" type="text" placeholder="Search courses by title or number..." />
+        </div>
+        <div class="content">
+            <div class="results">
+                <h2>Results</h2>
+                <ul id="results"></ul>
+            </div>
+            <div class="details">
+                <h2>Sections</h2>
+                <div id="sections"></div>
+                <h2>Selected</h2>
+                <ul id="selected"></ul>
+                <button id="finalize">Finalize and Download PDF</button>
+            </div>
+        </div>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+  </html>
+
+
