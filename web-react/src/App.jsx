@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import CourseSearch from './components/CourseSearch';
+import DepartmentList from './components/DepartmentList';
 import WeeklySchedule from './components/WeeklySchedule';
+import FullCalendarSchedule from './components/FullCalendarSchedule';
 import CourseDetails from './components/CourseDetails';
 import SelectedCourses from './components/SelectedCourses';
 import ScheduleControls from './components/ScheduleControls';
@@ -13,8 +15,7 @@ import axios from 'axios';
 // In production, requests go to same origin
 axios.defaults.baseURL = '';
 
-function App()
-{
+function App() {
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseSections, setCourseSections] = useState([]);
@@ -26,56 +27,42 @@ function App()
   const [studentInfo, setStudentInfo] = useState(null);
 
   // Search for courses
-  const searchCourses = async (query) =>
-  {
+  const searchCourses = async (query) => {
     setLoading(true);
-    try
-    {
+    try {
       const response = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
       setCourses(response.data || []);
-    }
-    catch (error)
-    {
+    } catch (error) {
       console.error('Error searching courses:', error);
       setCourses([]);
-    }
-    finally
-    {
+    } finally {
       setLoading(false);
     }
   };
 
   // Load sections for a selected course
-  const loadCourseSections = async (course) =>
-  {
+  const loadCourseSections = async (course) => {
     setSelectedCourse(course);
     setLoading(true);
-    try
-    {
+    try {
       const response = await axios.get(`/api/course/${course.id}/sections`);
       setCourseSections(response.data || []);
-    }
-    catch (error)
-    {
+    } catch (error) {
       console.error('Error loading sections:', error);
       setCourseSections([]);
-    }
-    finally
-    {
+    } finally {
       setLoading(false);
     }
   };
 
   // Add a section to the schedule
-  const addSection = (section) =>
-  {
+  const addSection = (section) => {
     // Check for time conflicts
     const hasConflict = selectedSections.some(existing =>
       checkTimeConflict(existing, section)
     );
 
-    if (hasConflict)
-    {
+    if (hasConflict) {
       alert('This section conflicts with an existing course in your schedule.');
       return;
     }
@@ -84,14 +71,12 @@ function App()
   };
 
   // Remove a section from the schedule
-  const removeSection = (sectionId) =>
-  {
+  const removeSection = (sectionId) => {
     setSelectedSections(selectedSections.filter(s => s.id !== sectionId));
   };
 
   // Check for time conflicts between two sections
-  const checkTimeConflict = (section1, section2) =>
-  {
+  const checkTimeConflict = (section1, section2) => {
     for (const meeting1 of section1.meetings || [])
     {
       for (const meeting2 of section2.meetings || [])
@@ -110,8 +95,7 @@ function App()
         const end2 = start2 + meeting2.durationMin;
 
         // Check for time overlap
-        if (start1 < end2 && start2 < end1)
-        {
+        if (start1 < end2 && start2 < end1) {
           return true;
         }
       }
@@ -120,8 +104,7 @@ function App()
   };
 
   // Parse time string to minutes
-  const parseTime = (timeStr) =>
-  {
+  const parseTime = (timeStr) => {
     if (!timeStr || timeStr.length < 5) return 0;
     const hours = parseInt(timeStr.substring(0, 2));
     const minutes = parseInt(timeStr.substring(3, 5));
@@ -129,10 +112,8 @@ function App()
   };
 
   // Export schedule as PDF
-  const exportSchedule = () =>
-  {
-    if (selectedSections.length === 0)
-    {
+  const exportSchedule = () => {
+    if (selectedSections.length === 0) {
       alert('Please add at least one course to your schedule.');
       return;
     }
@@ -160,16 +141,13 @@ function App()
   };
 
   // Load initial courses
-  useEffect(() =>
-  {
+  useEffect(() => {
     searchCourses('');
   }, []);
 
   // Auto-search when query changes
-  useEffect(() =>
-  {
-    const timer = setTimeout(() =>
-    {
+  useEffect(() => {
+    const timer = setTimeout(() => {
       searchCourses(searchQuery);
     }, 300);
     return () => clearTimeout(timer);
@@ -232,6 +210,13 @@ function App()
               onSelectCourse={loadCourseSections}
               loading={loading}
             />
+
+            <DepartmentList
+              onDepartmentClick={(dept) => {
+                setSearchQuery(dept);
+                searchCourses(dept);
+              }}
+            />
             
             {selectedCourse && (
               <CourseDetails
@@ -252,9 +237,10 @@ function App()
             />
             
             {scheduleView === 'week' ? (
-              <WeeklySchedule
-                sections={selectedSections}
+              <FullCalendarSchedule
+                selectedSections={selectedSections}
                 onRemoveSection={removeSection}
+                studentInfo={studentInfo}
               />
             ) : (
               <SelectedCourses

@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -219,4 +220,43 @@ func (s *Store) MaybeFetchSubjects() error {
 		s.courses[i].SubjectAbbr = s.subjectAbbrById[s.courses[i].SubjectId]
 	}
 	return nil
+}
+
+// Department represents a department/subject
+type Department struct {
+	Abbreviation string `json:"abbreviation"`
+	Name         string `json:"name"`
+}
+
+// GetAllDepartments returns all unique departments sorted alphabetically
+func (s *Store) GetAllDepartments() []Department {
+	if s == nil {
+		return []Department{}
+	}
+
+	deptMap := make(map[string]string) // abbr -> name
+
+	// Extract departments from courses
+	for _, course := range s.courses {
+		if course.SubjectAbbr != "" {
+			// Use subject abbreviation as department
+			deptMap[course.SubjectAbbr] = course.SubjectAbbr // For now, use abbr as name too
+		}
+	}
+
+	// Convert map to sorted slice
+	departments := make([]Department, 0, len(deptMap))
+	for abbr, name := range deptMap {
+		departments = append(departments, Department{
+			Abbreviation: abbr,
+			Name:         name,
+		})
+	}
+
+	// Sort alphabetically by abbreviation
+	sort.Slice(departments, func(i, j int) bool {
+		return departments[i].Abbreviation < departments[j].Abbreviation
+	})
+
+	return departments
 }

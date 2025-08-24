@@ -1,21 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, BookOpen, Hash } from 'lucide-react';
 
-function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, loading })
-{
+function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, loading, onDepartmentClick }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Function to handle department clicks
+  const handleDepartmentClick = (department) => {
+    setSearchQuery(department);
+    setShowDropdown(true);
+    setSelectedIndex(-1);
+    // Focus the input to show the dropdown
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
   // Handle clicking outside to close dropdown
-  useEffect(() =>
-  {
-    const handleClickOutside = (event) =>
-    {
+  useEffect(() => {
+    const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-          inputRef.current && !inputRef.current.contains(event.target))
-      {
+          inputRef.current && !inputRef.current.contains(event.target)) {
         setShowDropdown(false);
       }
     };
@@ -25,12 +32,10 @@ function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, lo
   }, []);
 
   // Handle keyboard navigation
-  const handleKeyDown = (e) =>
-  {
+  const handleKeyDown = (e) => {
     if (!showDropdown || courses.length === 0) return;
 
-    switch (e.key)
-    {
+    switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         setSelectedIndex(prev => 
@@ -45,8 +50,7 @@ function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, lo
         break;
       case 'Enter':
         e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < courses.length)
-        {
+        if (selectedIndex >= 0 && selectedIndex < courses.length) {
           handleSelectCourse(courses[selectedIndex]);
         }
         break;
@@ -57,22 +61,19 @@ function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, lo
     }
   };
 
-  const handleSelectCourse = (course) =>
-  {
+  const handleSelectCourse = (course) => {
     onSelectCourse(course);
     setShowDropdown(false);
     setSelectedIndex(-1);
   };
 
-  const handleInputChange = (e) =>
-  {
+  const handleInputChange = (e) => {
     setSearchQuery(e.target.value);
     setShowDropdown(true);
     setSelectedIndex(-1);
   };
 
-  const clearSearch = () =>
-  {
+  const clearSearch = () => {
     setSearchQuery('');
     setShowDropdown(false);
     setSelectedIndex(-1);
@@ -168,18 +169,7 @@ function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, lo
         )}
       </div>
 
-      {/* Quick filters */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {['CS', 'MA', 'PHYS', 'CHEM', 'ENGL'].map(subject => (
-          <button
-            key={subject}
-            onClick={() => setSearchQuery(subject)}
-            className="px-3 py-1 text-xs font-medium bg-black text-purdue-gold rounded-full hover:bg-purdue-black-soft transition-colors"
-          >
-            {subject}
-          </button>
-        ))}
-      </div>
+
     </div>
   );
 }

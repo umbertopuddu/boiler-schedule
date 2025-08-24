@@ -166,9 +166,9 @@ function WeeklySchedule({ sections, onRemoveSection })
     }
     else
     {
-      // Add 30 minutes padding before and after
-      min = Math.max(0, min - 30);
-      max = Math.min(24 * 60, max + 30);
+      // Add 60 minutes padding before and after
+      min = Math.max(0, min - 60);
+      max = Math.min(24 * 60, max + 60);
       
       // Round to nearest 30 minutes
       min = Math.floor(min / 30) * 30;

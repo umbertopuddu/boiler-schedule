@@ -57,8 +57,11 @@ func main() {
 
 	handler := api.NewHandler(store)
 	apiRouter.HandleFunc("/search", handler.HandleSearch).Methods(http.MethodGet, http.MethodOptions)
+	apiRouter.HandleFunc("/departments", handler.HandleDepartments).Methods(http.MethodGet, http.MethodOptions)
 	apiRouter.HandleFunc("/course/{id}/sections", handler.HandleCourseSections).Methods(http.MethodGet, http.MethodOptions)
 	apiRouter.HandleFunc("/schedule/pdf", handler.HandleSchedulePDF).Methods(http.MethodGet, http.MethodOptions)
+	apiRouter.HandleFunc("/schedule/html", handler.HandleScheduleHTML).Methods(http.MethodGet, http.MethodOptions)
+	apiRouter.HandleFunc("/schedule/pdf-from-image", handler.HandlePDFFromImage).Methods(http.MethodPost, http.MethodOptions)
 	apiRouter.Methods(http.MethodOptions).HandlerFunc(handler.HandleOptions)
 
 	// Serve static files
