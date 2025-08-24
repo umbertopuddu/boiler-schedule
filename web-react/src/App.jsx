@@ -5,6 +5,7 @@ import WeeklySchedule from './components/WeeklySchedule';
 import CourseDetails from './components/CourseDetails';
 import SelectedCourses from './components/SelectedCourses';
 import ScheduleControls from './components/ScheduleControls';
+import StudentInfoModal from './components/StudentInfoModal';
 import { Calendar, BookOpen, Clock, Users, Train } from 'lucide-react';
 import axios from 'axios';
 
@@ -21,6 +22,8 @@ function App()
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [scheduleView, setScheduleView] = useState('week'); // week, list
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [studentInfo, setStudentInfo] = useState(null);
 
   // Search for courses
   const searchCourses = async (query) =>
@@ -133,8 +136,27 @@ function App()
       alert('Please add at least one course to your schedule.');
       return;
     }
+    setShowStudentModal(true);
+  };
+
+  // Handle student info submission and PDF generation
+  const handleStudentInfoSubmit = (info) =>
+  {
+    setStudentInfo(info);
+    setShowStudentModal(false);
+    
+    // Generate PDF with student info
     const sectionIds = selectedSections.map(s => s.id).join(',');
-    window.open(`/api/schedule/pdf?sections=${encodeURIComponent(sectionIds)}`, '_blank');
+    const params = new URLSearchParams({
+      sections: sectionIds,
+      studentName: info.name,
+      studentEmail: info.email,
+      studentId: info.studentId,
+      major: info.major,
+      year: info.year
+    });
+    
+    window.open(`/api/schedule/pdf?${params.toString()}`, '_blank');
   };
 
   // Load initial courses
@@ -161,12 +183,23 @@ function App()
       <header className="bg-black shadow-lg border-b-4 border-purdue-gold">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <Train className="h-8 w-8 text-purdue-gold" />
+                                      <div className="flex items-center space-x-3">
+              <div className="bg-black p-2 rounded-lg">
+                <img 
+                  src="/logo.png" 
+                  alt="BoilerSchedule Logo" 
+                  className="h-8 w-8 object-contain"
+                />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-purdue-gold">
-                  BoilerSchedule
-                </h1>
+                <a 
+                  href="mailto:upuddu@purdue.edu"
+                  className="hover:text-purdue-gold-light transition-colors"
+                >
+                  <h1 className="text-2xl font-bold text-purdue-gold hover:opacity-80">
+                    BoilerSchedule
+                  </h1>
+                </a>
                 <p className="text-xs text-purdue-gold/70">Purdue Course Scheduler</p>
               </div>
             </div>
@@ -236,25 +269,46 @@ function App()
       {/* Footer */}
       <footer className="bg-black border-t-4 border-purdue-gold mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4 text-purdue-gold" />
-                <span className="text-sm text-purdue-gold">
-                  {selectedSections.length} courses selected
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-purdue-gold" />
+                  <span className="text-sm text-purdue-gold">
+                    {selectedSections.length} courses selected
+                  </span>
+                </div>
+                <span className="text-purdue-gold/60 text-sm">•</span>
+                <span className="text-sm text-purdue-gold/80">
+                  Boiler Up! 🚂
                 </span>
               </div>
-              <span className="text-purdue-gold/60 text-sm">•</span>
-              <span className="text-sm text-purdue-gold/80">
-                Boiler Up! 🚂
-              </span>
+              <div className="text-sm text-purdue-gold/60">
+                © 2025 BoilerSchedule
+              </div>
             </div>
-            <div className="text-sm text-purdue-gold/60">
-              © 2025 BoilerSchedule
+            <div className="border-t border-purdue-gold/30 pt-4">
+              <p className="text-xs text-purdue-gold/60 text-center">
+                BoilerSchedule is not affiliated with Purdue University. Made by{' '}
+                <a 
+                  href="https://github.com/umbertopuddu" 
+                  className="text-purdue-gold hover:text-purdue-gold-light transition-colors underline"
+                >
+                  Umberto Puddu
+                </a>.
+              </p>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Student Info Modal */}
+      <StudentInfoModal
+        isOpen={showStudentModal}
+        onClose={() => setShowStudentModal(false)}
+        onSubmit={handleStudentInfoSubmit}
+        currentInfo={studentInfo}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, MapPin, User, Clock, ChevronLeft, ChevronRight, Palette } from 'lucide-react';
+import { X, MapPin, User, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Department color palettes - different shades of the same color for each department
 const DEPARTMENT_COLORS = {
@@ -40,27 +40,27 @@ const DEPARTMENT_COLORS = {
   ]
 };
 
-// All available colors for custom selection
-const CUSTOM_COLORS = [
-  { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-900' },
-  { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-900' },
-  { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-900' },
-  { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-900' },
-  { bg: 'bg-lime-100', border: 'border-lime-500', text: 'text-lime-900' },
-  { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-900' },
-  { bg: 'bg-emerald-100', border: 'border-emerald-500', text: 'text-emerald-900' },
-  { bg: 'bg-teal-100', border: 'border-teal-500', text: 'text-teal-900' },
-  { bg: 'bg-cyan-100', border: 'border-cyan-500', text: 'text-cyan-900' },
-  { bg: 'bg-sky-100', border: 'border-sky-500', text: 'text-sky-900' },
-  { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-900' },
-  { bg: 'bg-indigo-100', border: 'border-indigo-500', text: 'text-indigo-900' },
-  { bg: 'bg-violet-100', border: 'border-violet-500', text: 'text-violet-900' },
-  { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-900' },
-  { bg: 'bg-fuchsia-100', border: 'border-fuchsia-500', text: 'text-fuchsia-900' },
-  { bg: 'bg-pink-100', border: 'border-pink-500', text: 'text-pink-900' },
-  { bg: 'bg-rose-100', border: 'border-rose-500', text: 'text-rose-900' },
-  { bg: 'bg-purdue-gold/20', border: 'border-purdue-gold', text: 'text-black' },
-  { bg: 'bg-black', border: 'border-purdue-gold', text: 'text-purdue-gold' },
+// RGB Color wheel colors
+const RGB_COLORS = [
+  { bg: 'bg-red-200', border: 'border-red-500', text: 'text-red-900', rgb: '#FEE2E2' },
+  { bg: 'bg-orange-200', border: 'border-orange-500', text: 'text-orange-900', rgb: '#FED7AA' },
+  { bg: 'bg-amber-200', border: 'border-amber-500', text: 'text-amber-900', rgb: '#FDE68A' },
+  { bg: 'bg-yellow-200', border: 'border-yellow-500', text: 'text-yellow-900', rgb: '#FEF08A' },
+  { bg: 'bg-lime-200', border: 'border-lime-500', text: 'text-lime-900', rgb: '#D9F99D' },
+  { bg: 'bg-green-200', border: 'border-green-500', text: 'text-green-900', rgb: '#BBF7D0' },
+  { bg: 'bg-emerald-200', border: 'border-emerald-500', text: 'text-emerald-900', rgb: '#A7F3D0' },
+  { bg: 'bg-teal-200', border: 'border-teal-500', text: 'text-teal-900', rgb: '#99F6E4' },
+  { bg: 'bg-cyan-200', border: 'border-cyan-500', text: 'text-cyan-900', rgb: '#A5F3FC' },
+  { bg: 'bg-sky-200', border: 'border-sky-500', text: 'text-sky-900', rgb: '#BAE6FD' },
+  { bg: 'bg-blue-200', border: 'border-blue-500', text: 'text-blue-900', rgb: '#DBEAFE' },
+  { bg: 'bg-indigo-200', border: 'border-indigo-500', text: 'text-indigo-900', rgb: '#C7D2FE' },
+  { bg: 'bg-violet-200', border: 'border-violet-500', text: 'text-violet-900', rgb: '#DDD6FE' },
+  { bg: 'bg-purple-200', border: 'border-purple-500', text: 'text-purple-900', rgb: '#E9D5FF' },
+  { bg: 'bg-fuchsia-200', border: 'border-fuchsia-500', text: 'text-fuchsia-900', rgb: '#F5D0FE' },
+  { bg: 'bg-pink-200', border: 'border-pink-500', text: 'text-pink-900', rgb: '#FBCFE8' },
+  { bg: 'bg-rose-200', border: 'border-rose-500', text: 'text-rose-900', rgb: '#FECDD3' },
+  { bg: 'bg-purdue-gold/30', border: 'border-purdue-gold', text: 'text-black', rgb: '#CFB991' },
+  { bg: 'bg-black', border: 'border-purdue-gold', text: 'text-purdue-gold', rgb: '#000000' },
 ];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -186,14 +186,18 @@ function WeeklySchedule({ sections, onRemoveSection })
   }
 
   const totalMinutes = maxTime - minTime;
-  const gridHeight = Math.max(400, timeSlots.length * 60); // Dynamic height based on time range
+  const slotHeight = 60; // Fixed height per 30-minute slot
+  const gridHeight = timeSlots.length * slotHeight;
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      {/* Header */}
+      {/* Header with Preview Label */}
       <div className="px-6 py-4 border-b-2 border-purdue-gold bg-black">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-purdue-gold">Weekly Schedule</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-purdue-gold">Schedule Preview</h2>
+            <p className="text-xs text-purdue-gold/70">This is how your PDF will look</p>
+          </div>
           <div className="flex items-center space-x-2 text-sm text-purdue-gold/80">
             <Clock className="h-4 w-4" />
             <span>{sections.length} courses</span>
@@ -201,11 +205,11 @@ function WeeklySchedule({ sections, onRemoveSection })
         </div>
       </div>
 
-      {/* Schedule Grid */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[800px] relative">
-          {/* Day Headers */}
-          <div className="grid grid-cols-[80px_repeat(5,1fr)] border-b-2 border-gray-300 bg-gray-50 sticky top-0 z-10">
+      {/* Schedule Grid - Landscape Layout */}
+      <div>
+        <div className="w-full">
+          {/* Day Headers - Landscape */}
+          <div className="grid grid-cols-[100px_repeat(5,1fr)] border-b-2 border-gray-300 bg-gray-50 sticky top-0 z-10 w-full">
             <div className="p-3 text-xs font-medium text-gray-500"></div>
             {DAYS.map(day => (
               <div key={day} className="p-3 text-center border-l border-gray-200">
@@ -215,43 +219,51 @@ function WeeklySchedule({ sections, onRemoveSection })
             ))}
           </div>
 
-          {/* Time Grid */}
-          <div className="relative" style={{ height: `${gridHeight}px` }}>
+          {/* Time Grid Container */}
+          <div className="relative w-full" style={{ height: `${gridHeight}px` }}>
             {/* Time Labels and Grid Lines */}
             {timeSlots.map((time, index) => {
               const isHour = time % 60 === 0;
+              const topPosition = index * slotHeight;
+              
               return (
                 <div
                   key={time}
-                  className="absolute w-full flex"
-                  style={{ top: `${((time - minTime) / totalMinutes) * 100}%` }}
+                  className="absolute left-0 right-0 flex"
+                  style={{ top: `${topPosition}px` }}
                 >
-                  <div className="w-[80px] pr-2 text-right">
+                  <div className="w-[100px] pr-3 text-right flex items-center justify-end h-[60px]">
                     <span className={`text-xs ${isHour ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
                       {formatTime(time)}
                     </span>
                   </div>
-                  <div className={`flex-1 ${isHour ? 'border-t border-gray-300' : 'border-t border-gray-100'}`}></div>
+                  <div className={`flex-1 ${isHour ? 'border-t-2 border-gray-300' : 'border-t border-gray-100'}`}></div>
                 </div>
               );
             })}
 
             {/* Vertical Day Dividers */}
-            {[0, 1, 2, 3, 4].map(dayIndex => (
+            {Array.from({ length: 6 }, (_, i) => (
               <div
-                key={dayIndex}
+                key={i}
                 className="absolute top-0 bottom-0 border-l border-gray-200"
-                style={{ left: `${80 + ((dayIndex + 1) * ((100 - 80/8) / 5))}px` }}
+                style={{ left: `calc(100px + ${i} * (100% - 100px) / 5)` }}
               />
             ))}
 
             {/* Course Blocks */}
             {events.map((event, index) => {
-              const top = ((event.startMin - minTime) / totalMinutes) * gridHeight;
-              const height = ((event.endMin - event.startMin) / totalMinutes) * gridHeight;
-              const width = `calc((100% - 80px) / 5 - 4px)`;
-              const left = `calc(80px + ${event.dayIndex} * (100% - 80px) / 5 + 2px)`;
+              const startSlot = Math.floor((event.startMin - minTime) / 30);
+              const durationSlots = Math.ceil((event.endMin - event.startMin) / 30);
+              
+              const top = startSlot * slotHeight + 2;
+              const height = (durationSlots * slotHeight) - 4;
+              const width = `calc((100% - 100px) / 5 - 8px)`;
+              const left = `calc(100px + ${event.dayIndex} * (100% - 100px) / 5 + 4px)`;
               const color = getColorForSection(event.section);
+
+              // Get primary instructor
+              const primaryInstructor = event.meeting.instructors?.[0] || 'TBA';
 
               return (
                 <div
@@ -267,34 +279,33 @@ function WeeklySchedule({ sections, onRemoveSection })
                   onMouseLeave={() => setHoveredSection(null)}
                   onClick={() => setSelectedSection(event)}
                 >
-                  <div className={`text-xs font-bold ${color.text}`}>
+                  {/* Type badge (LEC/REC/STU) */}
+                  {event.section.type && (
+                    <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/90 border border-gray-300 shadow-sm">
+                      {(event.section.type || '').slice(0,3).toUpperCase()}
+                    </div>
+                  )}
+                  <div className={`text-xs font-bold ${color.text} leading-tight`}>
                     {event.section.course?.subjectAbbr} {event.section.course?.number}
                   </div>
-                  <div className={`text-xs ${color.text} opacity-90`}>
-                    {event.section.type} - {event.section.crn}
+                  <div className={`text-xs ${color.text} opacity-90 leading-tight mt-1`}>
+                    {primaryInstructor}
                   </div>
-                  {height > 50 && (
-                    <>
-                      <div className={`text-xs mt-1 ${color.text} opacity-80`}>
-                        {event.meeting.buildingCode} {event.meeting.roomNumber}
-                      </div>
-                      {height > 70 && event.meeting.instructors?.length > 0 && (
-                        <div className={`text-xs mt-1 ${color.text} opacity-80 truncate`}>
-                          {event.meeting.instructors[0]}
-                        </div>
-                      )}
-                    </>
+                  {height > 70 && (
+                    <div className={`text-xs mt-1 ${color.text} opacity-80 leading-tight`}>
+                      {event.meeting.buildingCode} {event.meeting.roomNumber}
+                    </div>
                   )}
                   
-                  {/* Color Picker Button */}
+                  {/* Color Picker Button - RGB Circle */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowColorPicker(showColorPicker === event.section.id ? null : event.section.id);
                     }}
-                    className="absolute top-1 right-7 p-1 rounded-full bg-white/80 hover:bg-white transition-colors"
+                    className="absolute top-1 right-7 p-1 rounded-full bg-white/90 hover:bg-white transition-colors shadow-sm"
                   >
-                    <Palette className="h-3 w-3 text-gray-600" />
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 via-yellow-400 via-green-400 via-blue-400 to-purple-400"></div>
                   </button>
                   
                   {/* Remove Button */}
@@ -303,25 +314,37 @@ function WeeklySchedule({ sections, onRemoveSection })
                       e.stopPropagation();
                       onRemoveSection(event.section.id);
                     }}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-white/80 hover:bg-white transition-colors"
+                    className="absolute top-1 right-1 p-1 rounded-full bg-white/90 hover:bg-white transition-colors shadow-sm"
                   >
                     <X className="h-3 w-3 text-gray-600" />
                   </button>
 
-                  {/* Color Picker Dropdown */}
+                  {/* Color Picker Dropdown - Circular Layout */}
                   {showColorPicker === event.section.id && (
                     <div 
-                      className="absolute top-8 right-0 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-30"
+                      className="absolute top-8 right-0 bg-white rounded-full shadow-xl border border-gray-200 p-3 z-30"
                       onClick={(e) => e.stopPropagation()}
+                      style={{ width: '120px', height: '120px' }}
                     >
-                      <div className="grid grid-cols-4 gap-1">
-                        {CUSTOM_COLORS.map((color, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setCustomColor(event.section.id, color)}
-                            className={`w-8 h-8 rounded border-2 ${color.bg} ${color.border} hover:scale-110 transition-transform`}
-                          />
-                        ))}
+                      <div className="relative w-full h-full">
+                        {RGB_COLORS.map((color, idx) => {
+                          const angle = (idx * 360) / RGB_COLORS.length;
+                          const radius = 40;
+                          const x = Math.cos((angle * Math.PI) / 180) * radius + 54;
+                          const y = Math.sin((angle * Math.PI) / 180) * radius + 54;
+                          
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => setCustomColor(event.section.id, color)}
+                              className={`absolute w-4 h-4 rounded-full border-2 hover:scale-125 transition-transform ${color.bg} ${color.border}`}
+                              style={{
+                                left: `${x - 8}px`,
+                                top: `${y - 8}px`,
+                              }}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                   )}

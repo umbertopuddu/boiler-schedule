@@ -175,6 +175,14 @@ func (s *Store) CourseBySectionId(id string) (CourseSummary, bool) {
 	return c, ok
 }
 
+// SubjectAbbr returns the subject abbreviation for the given subject id if known.
+func (s *Store) SubjectAbbr(subjectId string) string {
+	if s == nil || s.subjectAbbrById == nil {
+		return ""
+	}
+	return s.subjectAbbrById[subjectId]
+}
+
 // Subject payloads for enrichment
 type subjectResp struct {
 	Value []subject `json:"value"`
