@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, BookOpen, Hash } from 'lucide-react';
 
-function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, loading, onDepartmentClick }) {
+function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, loading, onDepartmentClick, selectedCampuses, campuses, getCleanCampusName }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const dropdownRef = useRef(null);
@@ -136,15 +136,34 @@ function CourseSearch({ searchQuery, setSearchQuery, courses, onSelectCourse, lo
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 mb-1">
                           <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purdue-gold/20 text-black">
                             {course.subjectAbbr}
                           </span>
                           <span className="font-semibold text-gray-900">
                             {course.number}
                           </span>
+                          {/* Campus indicators for multi-campus courses */}
+                          {course.campuses && course.campuses.length > 1 && (
+                            <div className="flex gap-1">
+                              {course.campuses.map(campusId => {
+                                const campus = campuses.find(c => c.id === campusId);
+                                if (!campus) return null;
+                                const cleanName = getCleanCampusName ? getCleanCampusName(campus.name) : campus.name.split(' ')[0];
+                                return (
+                                  <span
+                                    key={campusId}
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800"
+                                    title={campus.name}
+                                  >
+                                    {cleanName}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <p className="mt-1 text-sm text-gray-700">
+                        <p className="text-sm text-gray-700">
                           {course.title}
                         </p>
                       </div>

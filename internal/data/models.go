@@ -93,6 +93,7 @@ type SectionInfo struct {
 	StartDate string        `json:"startDate"`
 	EndDate   string        `json:"endDate"`
 	Meetings  []MeetingInfo `json:"meetings"`
+	CampusId  string        `json:"campusId"`
 }
 
 type Store struct {
@@ -105,6 +106,10 @@ type Store struct {
 	courseBySectionId map[string]CourseSummary
 	// SubjectId -> Abbreviation
 	subjectAbbrById map[string]string
+	// CourseId -> set of CampusIds
+	courseToCampusSet map[string]map[string]struct{}
+	// CampusId -> Campus Name
+	campusNameById map[string]string
 }
 
 func (s *Store) CourseCount() int {
@@ -259,4 +264,134 @@ func (s *Store) GetAllDepartments() []Department {
 	})
 
 	return departments
+}
+
+// Campus represents a campus with id and display name
+type Campus struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetCampuses returns campuses present in the loaded dataset, with names if known
+func (s *Store) GetCampuses() []Campus {
+	if s == nil {
+		return []Campus{}
+	}
+	seen := make(map[string]struct{})
+	campuses := make([]Campus, 0, 8)
+	for _, set := range s.courseToCampusSet {
+		for cid := range set {
+			if _, ok := seen[cid]; ok {
+				continue
+			}
+			seen[cid] = struct{}{}
+			name := s.campusNameById[cid]
+			if name == "" {
+				name = cid
+			}
+			campuses = append(campuses, Campus{Id: cid, Name: name})
+		}
+	}
+	sort.Slice(campuses, func(i, j int) bool { return campuses[i].Name < campuses[j].Name })
+	return campuses
+}
+
+// GetAllDepartmentsByCampus filters departments by campus id
+func (s *Store) GetAllDepartmentsByCampus(campusId string) []Department {
+	if campusId == "" {
+		return s.GetAllDepartments()
+	}
+	deptMap := make(map[string]string)
+	for courseId, sections := range s.courseToSections {
+		hasCampus := false
+		for _, sec := range sections {
+			if sec.CampusId == campusId {
+				hasCampus = true
+				break
+			}
+		}
+		if !hasCampus {
+			continue
+		}
+		for _, c := range s.courses {
+			if c.Id == courseId && c.SubjectAbbr != "" {
+				deptMap[c.SubjectAbbr] = c.SubjectAbbr
+				break
+			}
+		}
+	}
+	departments := make([]Department, 0, len(deptMap))
+	for abbr, name := range deptMap {
+		departments = append(departments, Department{Abbreviation: abbr, Name: name})
+	}
+	sort.Slice(departments, func(i, j int) bool { return departments[i].Abbreviation < departments[j].Abbreviation })
+	return departments
+}
+
+// SearchCoursesByCampus searches and filters results by campus id if provided
+func (s *Store) SearchCoursesByCampus(q string, limit int, campusId string) []CourseSummary {
+	base := s.SearchCourses(q, 0)
+	if campusId == "" {
+		if limit > 0 && len(base) > limit {
+			return base[:limit]
+		}
+		return base
+	}
+	out := make([]CourseSummary, 0, len(base))
+	for _, c := range base {
+		sections := s.courseToSections[c.Id]
+		for _, sec := range sections {
+			if sec.CampusId == campusId {
+				out = append(out, c)
+				break
+			}
+		}
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out
+}
+
+// SectionsByCourseCampus returns only sections for the given course on a campus
+func (s *Store) SectionsByCourseCampus(courseId, campusId string) []SectionInfo {
+	if campusId == "" {
+		return s.SectionsByCourse(courseId)
+	}
+	all := s.courseToSections[courseId]
+	if len(all) == 0 {
+		return nil
+	}
+	filtered := make([]SectionInfo, 0, len(all))
+	for _, sec := range all {
+		if sec.CampusId == campusId {
+			filtered = append(filtered, sec)
+		}
+	}
+	return filtered
+}
+
+// MaybeFetchCampuses populates campus names via Purdue API if empty
+func (s *Store) MaybeFetchCampuses() error {
+	if s.campusNameById != nil && len(s.campusNameById) > 0 {
+		return nil
+	}
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, _ := http.NewRequest(http.MethodGet, "https://api.purdue.io/odata/Campuses", nil)
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var cr struct {
+		Value []struct{ Id, Name string } `json:"value"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&cr); err != nil {
+		return err
+	}
+	s.campusNameById = make(map[string]string, len(cr.Value))
+	for _, v := range cr.Value {
+		s.campusNameById[v.Id] = v.Name
+	}
+	return nil
 }

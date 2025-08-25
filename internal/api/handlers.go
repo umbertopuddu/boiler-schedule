@@ -42,12 +42,24 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // GET /api/search?q=
 func (h *Handler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
+	campus := r.URL.Query().Get("campus")
+	if strings.TrimSpace(campus) != "" {
+		res := h.store.SearchCoursesByCampus(q, 50, campus)
+		writeJSON(w, http.StatusOK, res)
+		return
+	}
 	res := h.store.SearchCourses(q, 50)
 	writeJSON(w, http.StatusOK, res)
 }
 
 // GET /api/departments
 func (h *Handler) HandleDepartments(w http.ResponseWriter, r *http.Request) {
+	campus := r.URL.Query().Get("campus")
+	if strings.TrimSpace(campus) != "" {
+		departments := h.store.GetAllDepartmentsByCampus(campus)
+		writeJSON(w, http.StatusOK, departments)
+		return
+	}
 	departments := h.store.GetAllDepartments()
 	writeJSON(w, http.StatusOK, departments)
 }
@@ -56,7 +68,13 @@ func (h *Handler) HandleDepartments(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCourseSections(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	secs := h.store.SectionsByCourse(id)
+	campus := r.URL.Query().Get("campus")
+	var secs []data.SectionInfo
+	if strings.TrimSpace(campus) != "" {
+		secs = h.store.SectionsByCourseCampus(id, campus)
+	} else {
+		secs = h.store.SectionsByCourse(id)
+	}
 	if secs == nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "course not found"})
 		return
@@ -72,11 +90,35 @@ func (h *Handler) HandleOptions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// GET /api/campuses
+func (h *Handler) HandleCampuses(w http.ResponseWriter, r *http.Request) {
+	_ = h.store.MaybeFetchCampuses()
+	writeJSON(w, http.StatusOK, h.store.GetCampuses())
+}
+
+// PDFSectionInfo represents section information for PDF generation
+type PDFSectionInfo struct {
+	Course   string       `json:"course"`
+	Title    string       `json:"title"`
+	CRN      string       `json:"crn"`
+	Type     string       `json:"type"`
+	Meetings []PDFMeeting `json:"meetings"`
+}
+
+// PDFMeeting represents meeting information for PDF
+type PDFMeeting struct {
+	Days        []string `json:"days"`
+	Start       string   `json:"start"`
+	End         string   `json:"end"`
+	Location    string   `json:"location"`
+	Instructors []string `json:"instructors"`
+}
+
 // ImagePDFRequest represents the request body for PDF generation from image
 type ImagePDFRequest struct {
-	ImageData   string                   `json:"imageData"`
-	StudentInfo StudentInfo              `json:"studentInfo"`
-	Sections    []map[string]interface{} `json:"sections"`
+	ImageData   string           `json:"imageData"`
+	StudentInfo StudentInfo      `json:"studentInfo"`
+	Sections    []PDFSectionInfo `json:"sections"`
 }
 
 // POST /api/schedule/pdf-from-image
@@ -115,21 +157,33 @@ func (h *Handler) HandlePDFFromImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create PDF
+	// Create PDF in landscape mode
 	pdf := gofpdf.New("L", "mm", "Letter", "")
+
+	// PAGE 1: Header and Schedule
 	pdf.AddPage()
 
-	// Add header with student info
-	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(0, 10, "BoilerSchedule - Purdue University Course Schedule")
-	pdf.Ln(8)
+	// Add Purdue-style header with black background
+	pdf.SetFillColor(0, 0, 0)      // Black background
+	pdf.Rect(0, 0, 279.4, 30, "F") // Full width black header
 
+	pdf.SetTextColor(218, 165, 32) // Purdue gold text
+	pdf.SetFont("Arial", "B", 18)
+	pdf.SetXY(15, 8)
+	pdf.Cell(0, 8, "BoilerSchedule")
+	pdf.Ln(6)
+	pdf.SetXY(15, 16)
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(0, 6, "Purdue University Course Schedule - Fall 2025")
+
+	// Student info on the right side of header
 	if req.StudentInfo.Name != "" {
-		pdf.SetFont("Arial", "", 12)
-		pdf.Cell(0, 6, fmt.Sprintf("Student: %s", req.StudentInfo.Name))
-		pdf.Ln(5)
+		pdf.SetXY(180, 8)
+		pdf.SetFont("Arial", "", 11)
+		pdf.Cell(0, 5, fmt.Sprintf("Student: %s", req.StudentInfo.Name))
 
 		if req.StudentInfo.Major != "" || req.StudentInfo.Year != "" {
+			pdf.SetXY(180, 13)
 			info := ""
 			if req.StudentInfo.Major != "" {
 				info = req.StudentInfo.Major
@@ -141,17 +195,17 @@ func (h *Handler) HandlePDFFromImage(w http.ResponseWriter, r *http.Request) {
 					info = req.StudentInfo.Year
 				}
 			}
-			pdf.Cell(0, 6, info)
-			pdf.Ln(5)
+			pdf.Cell(0, 5, info)
 		}
 
 		if req.StudentInfo.Email != "" {
-			pdf.Cell(0, 6, req.StudentInfo.Email)
-			pdf.Ln(5)
+			pdf.SetXY(180, 18)
+			pdf.Cell(0, 5, req.StudentInfo.Email)
 		}
 	}
 
-	pdf.Ln(5)
+	// Reset text color for rest of document
+	pdf.SetTextColor(0, 0, 0)
 
 	// Save image to temp file for PDF embedding
 	tempFile := "/tmp/schedule.png"
@@ -160,11 +214,11 @@ func (h *Handler) HandlePDFFromImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Calculate image dimensions to fit page
+	// Calculate image dimensions to fit the rest of page 1
 	pageW, pageH := pdf.GetPageSize()
-	margin := 10.0
+	margin := 15.0
 	maxW := pageW - 2*margin
-	maxH := pageH - 60 // Leave room for header and footer
+	maxH := pageH - 70 // Leave room for header (30) and footer (40)
 
 	imgW := float64(img.Bounds().Dx())
 	imgH := float64(img.Bounds().Dy())
@@ -182,17 +236,116 @@ func (h *Handler) HandlePDFFromImage(w http.ResponseWriter, r *http.Request) {
 
 	// Center the image
 	x := (pageW - finalW) / 2
-	y := pdf.GetY() + 5
+	y := 40.0 // Start after header
 
 	// Add the schedule image
 	pdf.Image(tempFile, x, y, finalW, finalH, false, "PNG", 0, "")
 
-	// Add footer
-	pdf.SetY(-15)
-	pdf.SetFont("Arial", "I", 8)
-	pdf.Cell(0, 10, "Generated by BoilerSchedule - Made by Umberto Puddu (upuddu@purdue.edu)")
+	// Add footer to page 1
+	pdf.SetY(-20)
+	pdf.SetFont("Arial", "I", 9)
+	pdf.SetTextColor(100, 100, 100)
+	pdf.Cell(0, 6, "Made by Umberto Puddu (upuddu@purdue.edu)")
 	pdf.Ln(4)
-	pdf.Cell(0, 10, "Not affiliated with Purdue University")
+	pdf.Cell(0, 6, "Not affiliated with Purdue University")
+
+	// PAGE 2: Course Details and Summary
+	pdf.AddPage()
+
+	// Header for page 2
+	pdf.SetFillColor(0, 0, 0)
+	pdf.Rect(0, 0, 279.4, 25, "F")
+	pdf.SetTextColor(218, 165, 32)
+	pdf.SetFont("Arial", "B", 16)
+	pdf.SetXY(15, 8)
+	pdf.Cell(0, 8, "Course Details & Summary")
+	pdf.SetTextColor(0, 0, 0)
+
+	pdf.SetY(35)
+
+	// Calculate totals
+	totalCredits := 0
+	totalHours := 0
+	for _, section := range req.Sections {
+		// Assume 3 credits per course if not specified
+		totalCredits += 3
+
+		// Calculate weekly hours for this section
+		for _, meeting := range section.Meetings {
+			if meeting.Start != "" && meeting.End != "" {
+				// Parse time and calculate duration
+				startHour, startMin := parseTime(meeting.Start)
+				endHour, endMin := parseTime(meeting.End)
+				if startHour >= 0 && endHour >= 0 {
+					duration := (endHour*60 + endMin) - (startHour*60 + startMin)
+					if duration > 0 {
+						totalHours += (duration / 60) * len(meeting.Days) // Hours per week
+					}
+				}
+			}
+		}
+	}
+
+	// Summary section
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 8, "Summary")
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(0, 6, fmt.Sprintf("Total Courses: %d", len(req.Sections)))
+	pdf.Ln(6)
+	pdf.Cell(0, 6, fmt.Sprintf("Total Credits: %d", totalCredits))
+	pdf.Ln(6)
+	pdf.Cell(0, 6, fmt.Sprintf("Total Weekly Hours: %d", totalHours))
+	pdf.Ln(12)
+
+	// Course details
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 8, "Course Details")
+	pdf.Ln(10)
+
+	for i, section := range req.Sections {
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(0, 6, fmt.Sprintf("%d. %s - %s", i+1, section.Course, section.Title))
+		pdf.Ln(8)
+
+		pdf.SetFont("Arial", "", 10)
+		pdf.Cell(0, 5, fmt.Sprintf("   CRN: %s | Type: %s", section.CRN, section.Type))
+		pdf.Ln(5)
+
+		for _, meeting := range section.Meetings {
+			if len(meeting.Days) > 0 {
+				days := ""
+				for _, day := range meeting.Days {
+					days += day + " "
+				}
+				pdf.Cell(0, 5, fmt.Sprintf("   Schedule: %s %s - %s", days, meeting.Start, meeting.End))
+				pdf.Ln(5)
+			}
+
+			if len(meeting.Instructors) > 0 {
+				for _, instructor := range meeting.Instructors {
+					pdf.Cell(0, 5, fmt.Sprintf("   Instructor: %s", instructor))
+					pdf.Ln(5)
+					// Add email if available (this would need to be passed from frontend)
+					// pdf.Cell(0, 5, fmt.Sprintf("   Email: %s@purdue.edu", strings.ToLower(strings.ReplaceAll(instructor, " ", ""))))
+					// pdf.Ln(5)
+				}
+			}
+
+			if meeting.Location != "" {
+				pdf.Cell(0, 5, fmt.Sprintf("   Location: %s", meeting.Location))
+				pdf.Ln(5)
+			}
+		}
+		pdf.Ln(3)
+
+		// Check if we need a new page
+		if pdf.GetY() > 180 {
+			pdf.AddPage()
+			pdf.SetY(15)
+		}
+	}
 
 	// Output PDF
 	var buf bytes.Buffer
@@ -221,6 +374,54 @@ func savePNGToFile(data []byte, filename string) error {
 	defer file.Close()
 
 	return png.Encode(file, img)
+}
+
+// Helper function to parse time strings like "9:00 AM" or "14:30"
+func parseTime(timeStr string) (hour, minute int) {
+	timeStr = strings.TrimSpace(timeStr)
+	if timeStr == "" {
+		return -1, -1
+	}
+
+	// Handle AM/PM format
+	if strings.Contains(timeStr, "AM") || strings.Contains(timeStr, "PM") {
+		isPM := strings.Contains(timeStr, "PM")
+		timeStr = strings.ReplaceAll(timeStr, " AM", "")
+		timeStr = strings.ReplaceAll(timeStr, " PM", "")
+
+		parts := strings.Split(timeStr, ":")
+		if len(parts) != 2 {
+			return -1, -1
+		}
+
+		h, err1 := strconv.Atoi(parts[0])
+		m, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return -1, -1
+		}
+
+		if isPM && h != 12 {
+			h += 12
+		} else if !isPM && h == 12 {
+			h = 0
+		}
+
+		return h, m
+	}
+
+	// Handle 24-hour format
+	parts := strings.Split(timeStr, ":")
+	if len(parts) != 2 {
+		return -1, -1
+	}
+
+	h, err1 := strconv.Atoi(parts[0])
+	m, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil {
+		return -1, -1
+	}
+
+	return h, m
 }
 
 // StudentInfo represents student information for PDF generation

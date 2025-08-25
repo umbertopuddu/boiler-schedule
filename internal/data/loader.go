@@ -35,6 +35,8 @@ func LoadStore(path string) (*Store, error) {
 		sectionById:       make(map[string]SectionInfo, 50000),
 		courseBySectionId: make(map[string]CourseSummary, 50000),
 		subjectAbbrById:   make(map[string]string, 0),
+		courseToCampusSet: make(map[string]map[string]struct{}, 10000),
+		campusNameById:    make(map[string]string, 0),
 	}
 
 	for dec.More() {
@@ -58,6 +60,13 @@ func LoadStore(path string) (*Store, error) {
 		// Aggregate sections
 		var allSections []SectionInfo
 		for _, cls := range rc.Classes {
+			// Track campus presence for this course
+			if _, ok := store.courseToCampusSet[rc.Id]; !ok {
+				store.courseToCampusSet[rc.Id] = make(map[string]struct{})
+			}
+			if cls.CampusId != "" {
+				store.courseToCampusSet[rc.Id][cls.CampusId] = struct{}{}
+			}
 			for _, sec := range cls.Sections {
 				s := SectionInfo{
 					Id:        sec.Id,
@@ -65,6 +74,7 @@ func LoadStore(path string) (*Store, error) {
 					Type:      sec.Type,
 					StartDate: sec.StartDate,
 					EndDate:   sec.EndDate,
+					CampusId:  cls.CampusId,
 				}
 				// Meetings
 				for _, m := range sec.Meetings {

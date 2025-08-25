@@ -1,13 +1,13 @@
-import { Calendar, List, Grid3x3, Download, Share2, Save } from 'lucide-react';
+import { Calendar, List, Grid3x3 } from 'lucide-react';
 
 function ScheduleControls({ view, onViewChange, totalCredits })
 {
   return (
     <div className="bg-white rounded-xl shadow-lg p-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center">
           {/* View Toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 space-x-2">
             <button
               onClick={() => onViewChange('week')}
               className={`px-3 py-1.5 rounded-md flex items-center space-x-2 transition-all ${
@@ -31,30 +31,14 @@ function ScheduleControls({ view, onViewChange, totalCredits })
               <span className="text-sm font-medium">List View</span>
             </button>
           </div>
-
-          {/* Credits Display */}
-          <div className="flex items-center space-x-2 px-3 py-1.5 bg-purdue-gold/20 rounded-lg">
-            <Calendar className="h-4 w-4 text-black" />
-            <span className="text-sm font-medium text-black">
-              {totalCredits} Credits
-            </span>
-          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2">
-          <button
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Save schedule"
-          >
-            <Save className="h-5 w-5" />
-          </button>
-          <button
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Share schedule"
-          >
-            <Share2 className="h-5 w-5" />
-          </button>
+        {/* Credits on far right */}
+        <div className="flex items-center space-x-2 px-3 py-1.5 bg-purdue-gold/20 rounded-lg">
+          <Calendar className="h-4 w-4 text-black" />
+          <span className="text-sm font-medium text-black">
+            {totalCredits} Credits
+          </span>
         </div>
       </div>
     </div>

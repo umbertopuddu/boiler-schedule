@@ -1,3 +1,4 @@
-2025/08/24 18:55:26 loading data from /Users/umbertopuddu/purdue_schedule/purdue_courses_fall_2025.json
-2025/08/24 18:55:26 loaded 5313 courses in 346.723084ms
-2025/08/24 18:55:26 serving on :8080
+2025/08/24 19:06:21 loading data from /Users/umbertopuddu/purdue_schedule/purdue_courses_fall_2025.json
+2025/08/24 19:06:21 loaded 5313 courses in 362.532417ms
+2025/08/24 19:06:21 serving on :8080
+signal: killed

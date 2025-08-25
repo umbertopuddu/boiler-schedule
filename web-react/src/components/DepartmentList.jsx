@@ -1,23 +1,40 @@
 import { useState, useEffect } from 'react';
 import { GraduationCap } from 'lucide-react';
 
-function DepartmentList({ onDepartmentClick }) {
+function DepartmentList({ onDepartmentClick, selectedCampuses, campuses }) {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetchDepartments();
-  }, []);
+  }, [selectedCampuses]);
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('/api/departments');
-      if (response.ok) {
-        const data = await response.json();
-        // Sort departments alphabetically by abbreviation
-        const sorted = data.sort((a, b) => a.abbreviation.localeCompare(b.abbreviation));
-        setDepartments(sorted);
-      }
+      // Fetch departments from all selected campuses and merge
+      const departmentPromises = selectedCampuses.map(async (campusId) => {
+        const params = new URLSearchParams({ campus: campusId });
+        const response = await fetch(`/api/departments?${params.toString()}`);
+        if (response.ok) {
+          return await response.json();
+        }
+        return [];
+      });
+      
+      const results = await Promise.all(departmentPromises);
+      const allDepartments = results.flat();
+      
+      // Remove duplicates and sort
+      const uniqueDepartments = allDepartments.reduce((acc, dept) => {
+        if (!acc.find(d => d.abbreviation === dept.abbreviation)) {
+          acc.push(dept);
+        }
+        return acc;
+      }, []);
+      
+      const sorted = uniqueDepartments.sort((a, b) => a.abbreviation.localeCompare(b.abbreviation));
+      setDepartments(sorted);
     } catch (error) {
       console.error('Error fetching departments:', error);
     } finally {
@@ -45,18 +62,18 @@ function DepartmentList({ onDepartmentClick }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-        <GraduationCap className="h-5 w-5 mr-2 text-purdue-gold-dark" />
+    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+        <GraduationCap className="h-4 sm:h-5 w-4 sm:w-5 mr-2 text-purdue-gold-dark" />
         Departments
       </h2>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-64 overflow-y-auto">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-2 max-h-48 sm:max-h-64 overflow-y-auto">
         {departments.map((dept) => (
           <button
             key={dept.abbreviation}
             onClick={() => handleDepartmentClick(dept.abbreviation)}
-            className="px-3 py-2 text-sm font-medium bg-black text-purdue-gold rounded-lg hover:bg-purdue-black-soft transition-colors text-center"
+            className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium bg-black text-purdue-gold rounded-md sm:rounded-lg hover:bg-purdue-black-soft transition-colors text-center"
             title={dept.name}
           >
             {dept.abbreviation}
@@ -66,7 +83,7 @@ function DepartmentList({ onDepartmentClick }) {
       
       {departments.length === 0 && (
         <div className="text-center text-gray-500 py-4">
-          <p>No departments found</p>
+          <p className="text-sm">No departments found</p>
         </div>
       )}
     </div>
