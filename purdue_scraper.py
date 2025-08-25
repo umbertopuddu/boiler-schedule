@@ -3,7 +3,7 @@ import json
 import time
 
 BASE_URL = "https://api.purdue.io/odata"
-TERM_CODE = '202610'
+TERM_CODE = input("Input term code: ")
 
 def fetch_all_subjects(session):
     """Fetches a list of all subjects available in the API."""
@@ -64,7 +64,7 @@ def main():
         # The filter might leave empty courses. Let's clean them up before saving.
         courses_with_classes = [c for c in all_courses if c.get('Classes')]
         
-        output_file = f"purdue_courses_fall_2025.json"
+        output_file = f"purdue_courses_{TERM_CODE}.json"
         with open(output_file, 'w') as f:
             json.dump(courses_with_classes, f, indent=4)
         

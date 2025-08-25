@@ -62,6 +62,7 @@ func main() {
 	apiRouter.HandleFunc("/course/{id}/sections", handler.HandleCourseSections).Methods(http.MethodGet, http.MethodOptions)
 	apiRouter.HandleFunc("/schedule/pdf", handler.HandleSchedulePDF).Methods(http.MethodGet, http.MethodOptions)
 	apiRouter.HandleFunc("/schedule/html", handler.HandleScheduleHTML).Methods(http.MethodGet, http.MethodOptions)
+	apiRouter.HandleFunc("/schedule/svg", handler.HandleScheduleSVG).Methods(http.MethodGet, http.MethodOptions)
 	apiRouter.HandleFunc("/schedule/pdf-from-image", handler.HandlePDFFromImage).Methods(http.MethodPost, http.MethodOptions)
 	apiRouter.Methods(http.MethodOptions).HandlerFunc(handler.HandleOptions)
 

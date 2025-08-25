@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
 import CourseSearch from './components/CourseSearch';
 import DepartmentList from './components/DepartmentList';
@@ -28,6 +28,9 @@ function App() {
   const [mobileView, setMobileView] = useState('search'); // search, schedule (for mobile only)
   const [selectedCampuses, setSelectedCampuses] = useState(['eb70e97b-3583-4ac9-86e5-468ad3869de8']); // West Lafayette Campus by default
   const [campuses, setCampuses] = useState([]);
+  
+  // Ref to access FullCalendarSchedule export function
+  const fullCalendarRef = useRef(null);
 
   // Helper function to get clean campus names
   const getCleanCampusName = (campusName) => {
@@ -176,23 +179,10 @@ function App() {
     return hours * 60 + minutes;
   };
 
-  // Handle student info submission and PDF generation
+  // Handle student info submission
   const handleStudentInfoSubmit = (info) => {
     setStudentInfo(info);
     setShowStudentModal(false);
-    
-    // Generate PDF with student info
-    const sectionIds = selectedSections.map(s => s.id).join(',');
-    const params = new URLSearchParams({
-      sections: sectionIds,
-      studentName: info.name,
-      studentEmail: info.email,
-      studentId: info.studentId,
-      major: info.major,
-      year: info.year
-    });
-    
-    window.open(`/api/schedule/pdf?${params.toString()}`, '_blank');
   };
 
   // Load campuses and initial courses
@@ -261,7 +251,7 @@ function App() {
                   className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
                 />
               </div>
-              <div>
+      <div>
                 <a 
                   href="mailto:upuddu@purdue.edu"
                   className="hover:text-purdue-gold-light transition-colors"
@@ -358,7 +348,7 @@ function App() {
                     >
                       {getCleanCampusName(campus.name)}
                       {isSelected && <span className="ml-1">✓</span>}
-                    </button>
+        </button>
                   );
                 })}
               </div>
@@ -418,6 +408,7 @@ function App() {
             
             {scheduleView === 'week' ? (
               <FullCalendarSchedule
+                ref={fullCalendarRef}
                 selectedSections={selectedSections}
                 onRemoveSection={removeSection}
                 onAddSection={addSection}
@@ -487,6 +478,7 @@ function App() {
               
               {scheduleView === 'week' ? (
                 <FullCalendarSchedule
+                  ref={fullCalendarRef}
                   selectedSections={selectedSections}
                   onRemoveSection={removeSection}
                   onAddSection={addSection}
@@ -538,8 +530,8 @@ function App() {
                 >
                   Umberto Puddu
                 </a>.
-              </p>
-            </div>
+        </p>
+      </div>
           </div>
         </div>
       </footer>

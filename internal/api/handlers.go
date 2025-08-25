@@ -424,6 +424,11 @@ func parseTime(timeStr string) (hour, minute int) {
 	return h, m
 }
 
+// generateSVGBasedPDF creates a PDF using SVG rendering instead of Chrome
+func (h *Handler) generateSVGBasedPDF(w http.ResponseWriter, r *http.Request) error {
+	return generateSVGBasedPDFWithStore(w, r, h.store)
+}
+
 // StudentInfo represents student information for PDF generation
 type StudentInfo struct {
 	Name      string
@@ -443,10 +448,19 @@ func (h *Handler) HandleSchedulePDF(w http.ResponseWriter, r *http.Request) {
 		host = "localhost:8080"
 	}
 
-	// Build the URL for the HTML version with all query parameters
-	htmlURL := fmt.Sprintf("http://%s/api/schedule/html?%s", host, r.URL.RawQuery)
+	// Check if SVG format is requested
+	format := r.URL.Query().Get("format")
+	if format == "svg" {
+		// Use SVG-based PDF generation
+		err := h.generateSVGBasedPDF(w, r)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to create SVG PDF: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
 
-	// Generate PDF using headless Chrome
+	// Fallback to HTML-based PDF generation (Chrome)
+	htmlURL := fmt.Sprintf("http://%s/api/schedule/html?%s", host, r.URL.RawQuery)
 	pdfBytes, err := generatePDFFromHTML(htmlURL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to create pdf: %v", err), http.StatusInternalServerError)
@@ -506,6 +520,67 @@ func (h *Handler) HandleScheduleHTML(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	_, _ = w.Write([]byte(htmlContent))
+}
+
+// GET /api/schedule/svg?sections=sec1,sec2,...&width=800&height=600
+func (h *Handler) HandleScheduleSVG(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	raw := r.URL.Query().Get("sections")
+	if strings.TrimSpace(raw) == "" {
+		http.Error(w, "sections query param required", http.StatusBadRequest)
+		return
+	}
+
+	ids := strings.Split(raw, ",")
+	sections := h.store.SectionsByIds(ids)
+	if len(sections) == 0 {
+		http.Error(w, "no valid sections found", http.StatusBadRequest)
+		return
+	}
+
+	// Build course mapping for label enrichment
+	courseBySection := make(map[string]data.CourseSummary, len(sections))
+	for _, s := range sections {
+		if c, ok := h.store.CourseBySectionId(s.Id); ok {
+			// Ensure subject abbreviation is present; fall back to store map
+			if c.SubjectAbbr == "" {
+				c.SubjectAbbr = h.store.SubjectAbbr(c.SubjectId)
+			}
+			courseBySection[s.Id] = c
+		}
+	}
+
+	// Parse dimensions
+	width := 800
+	height := 600
+	if w := r.URL.Query().Get("width"); w != "" {
+		if parsed, err := strconv.Atoi(w); err == nil && parsed > 0 {
+			width = parsed
+		}
+	}
+	if h := r.URL.Query().Get("height"); h != "" {
+		if parsed, err := strconv.Atoi(h); err == nil && parsed > 0 {
+			height = parsed
+		}
+	}
+
+	// Generate SVG schedule
+	svgSchedule, err := GenerateSVGSchedule(sections, courseBySection, width, height)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to generate SVG: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	_, _ = w.Write([]byte(svgSchedule.Content))
 }
 
 // generatePDFFromHTML uses ChromeDP to convert HTML to PDF

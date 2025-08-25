@@ -6,10 +6,33 @@ echo "🚂 Starting BoilerSchedule..."
 echo "   Purdue Course Scheduler"
 echo ""
 
+# Ensure the correct Go toolchain (required by this project)
+export GOTOOLCHAIN=${GOTOOLCHAIN:-go1.24.0}
+
+# Helper: kill anything on a port
+kill_port() {
+    local PORT="$1"
+    if lsof -ti :"$PORT" >/dev/null 2>&1; then
+        echo "Killing processes on port $PORT..."
+        lsof -ti :"$PORT" | xargs kill -9 2>/dev/null || true
+    fi
+}
+
+# Helper: kill previous dev servers
+kill_previous() {
+    echo "Cleaning up previous servers (ports 8080, 3000)..."
+    kill_port 8080
+    kill_port 3000
+    # Fallback: kill common processes by command
+    pkill -f "go run cmd/server/main.go" 2>/dev/null || true
+    pkill -f "vite" 2>/dev/null || true
+}
+
 # Check if we're in development or production mode
 if [ "$1" == "dev" ]; then
     echo "Starting in DEVELOPMENT mode..."
     echo ""
+    kill_previous
     
     # Start backend
     echo "Starting backend server on http://localhost:8080..."
@@ -34,21 +57,20 @@ if [ "$1" == "dev" ]; then
     echo "Press Ctrl+C to stop both servers..."
     
     # Wait for Ctrl+C
-    trap "kill $BACKEND_PID $FRONTEND_PID; exit" INT
+    trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true; kill_previous; exit" INT
     wait
     
 else
     echo "Starting in PRODUCTION mode..."
     echo ""
+    kill_previous
     
     # Build React app if needed
-    if [ ! -d "web-react/dist" ]; then
-        echo "Building React app..."
-        cd web-react
-        npm install
-        npm run build
-        cd ..
-    fi
+    echo "Building React app..."
+    cd web-react
+    npm install
+    npm run build
+    cd ..
     
     # Start server
     echo "Starting BoilerSchedule on http://localhost:8080..."

@@ -1,9 +1,8 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Save, Share2, X, RefreshCw } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import axios from 'axios';
 
 // Purdue-themed color palettes for departments (base color + shades)
@@ -53,7 +52,7 @@ const RGB_COLORS = [
   '#9932CC', '#FF6347', '#4682B4', '#D2691E', '#8FBC8F', '#B22222'
 ];
 
-function FullCalendarSchedule({ selectedSections, onRemoveSection, onAddSection, onReplaceSection, studentInfo, isMobile = false, campuses = [], getCleanCampusName, selectedCampuses = [] }) {
+const FullCalendarSchedule = forwardRef(({ selectedSections, onRemoveSection, onAddSection, onReplaceSection, studentInfo, isMobile = false, campuses = [], getCleanCampusName, selectedCampuses = [] }, ref) => {
   const calendarRef = useRef(null);
   const scheduleRef = useRef(null);
   const [events, setEvents] = useState([]);
@@ -61,6 +60,11 @@ function FullCalendarSchedule({ selectedSections, onRemoveSection, onAddSection,
   const [customColors, setCustomColors] = useState({}); // Store custom colors for sections
   const [timeRange, setTimeRange] = useState({ min: '08:00:00', max: '13:00:00' }); // Default 8am-1pm
   const [sectionPopup, setSectionPopup] = useState(null); // Store popup state for section management
+
+  // Expose export function to parent component
+  useImperativeHandle(ref, () => ({
+    exportPDF: handleExportPDF
+  }));
 
   // Debug logging
   useEffect(() => {
@@ -346,12 +350,9 @@ function FullCalendarSchedule({ selectedSections, onRemoveSection, onAddSection,
     }
   };
 
-  // Export to PDF using html2canvas
+  // Export to PDF using SVG-based backend generation
   const handleExportPDF = async () => {
-    if (!scheduleRef.current) {
-      alert('Schedule not ready. Please wait a moment and try again.');
-      return;
-    }
+    console.log('Export PDF button clicked (SVG-based)');
     
     if (selectedSections.length === 0) {
       alert('Please add courses to your schedule first');
@@ -361,70 +362,27 @@ function FullCalendarSchedule({ selectedSections, onRemoveSection, onAddSection,
     setIsExporting(true);
     
     try {
-      console.log('Starting PDF export...');
-      
-      // Capture the schedule as canvas
-      console.log('Capturing schedule with html2canvas...');
-      const canvas = await html2canvas(scheduleRef.current, {
-        scale: 2, // Higher quality
-        useCORS: true,
-        logging: true, // Enable logging for debugging
-        backgroundColor: '#ffffff',
-        windowWidth: scheduleRef.current.scrollWidth,
-        windowHeight: scheduleRef.current.scrollHeight,
-        allowTaint: true
+      const sectionIds = selectedSections.map(s => s.id).join(',');
+      const studentName = studentInfo?.name || '';
+      const studentEmail = studentInfo?.email || '';
+      const studentId = studentInfo?.studentId || '';
+      const major = studentInfo?.major || '';
+      const year = studentInfo?.year || '';
+
+      const params = new URLSearchParams({
+        sections: sectionIds,
+        studentName: studentName,
+        studentEmail: studentEmail,
+        studentId: studentId,
+        major: major,
+        year: year,
+        format: 'svg',
       });
 
-      console.log('Canvas captured, size:', canvas.width, 'x', canvas.height);
+      // Open PDF in new window/tab for download
+      window.open(`/api/schedule/pdf?${params.toString()}`, '_blank');
 
-      // Convert canvas to base64
-      const imageData = canvas.toDataURL('image/png');
-      console.log('Image data length:', imageData.length);
-      
-      // Send to backend to convert to PDF
-      console.log('Sending to backend...');
-      const requestData = {
-        imageData: imageData,
-        studentInfo: studentInfo || { name: 'Student' },
-        sections: selectedSections.map(s => ({
-          course: `${s.course?.subjectAbbr || 'UNKNOWN'} ${s.course?.number || '000'}`,
-          title: s.course?.title || 'Unknown Course',
-          crn: s.crn || 'N/A',
-          type: s.type || 'N/A',
-          meetings: (s.meetings || []).map(m => ({
-            days: m.days || [],
-            start: m.start || '',
-            end: m.end || '',
-            location: m.location || '',
-            instructors: m.instructors || []
-          }))
-        }))
-      };
-      
-      console.log('Request data:', requestData);
-      
-      const response = await axios.post('/api/schedule/pdf-from-image', requestData, {
-        responseType: 'blob',
-        timeout: 30000, // 30 second timeout
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Response received, creating download...');
-
-      // Download the PDF
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `BoilerSchedule_${studentInfo?.name || 'Schedule'}.pdf`.replace(/\s+/g, '_');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      console.log('PDF export completed successfully');
+      console.log('PDF export initiated successfully (SVG-based)');
       
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -502,7 +460,7 @@ function FullCalendarSchedule({ selectedSections, onRemoveSection, onAddSection,
       </div>
       
       {/* Print styles */}
-      <style jsx global>{`
+      <style>{`
         @media print {
           body * {
             visibility: hidden;
@@ -857,6 +815,6 @@ function FullCalendarSchedule({ selectedSections, onRemoveSection, onAddSection,
       )}
     </div>
   );
-}
+});
 
 export default FullCalendarSchedule;
